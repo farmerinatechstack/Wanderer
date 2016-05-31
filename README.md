@@ -1,2 +1,2 @@
 # Wanderer
-Mobile VR positional tracking on Android
+Mobile VR positional tracker on Android
