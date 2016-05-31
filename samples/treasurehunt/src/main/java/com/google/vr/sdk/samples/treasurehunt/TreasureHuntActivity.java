@@ -128,7 +128,13 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
   private GvrAudioEngine gvrAudioEngine;
   private volatile int soundId = GvrAudioEngine.INVALID_ID;
 
-  // Android Sensors
+  // Android Tracking Data & Sensors
+  private static final float NS2S = 1.0f / 1000000000.0f;
+
+  private float[] velocity;
+  private float[] position;
+  private float timestamp;
+
   private SensorManager sensorManager;
   private Sensor accSensor;
   private Sensor gyroSensor;
@@ -201,7 +207,10 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
     headView = new float[16];
     vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 
-    // Initalize Sensors
+    // Initalize Tracking Data and Sensors
+    velocity = new float[3];
+    position = new float[3];
+
     sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
     accSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
     gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
@@ -213,25 +222,36 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
 
     // Initialize 3D audio engine.
     gvrAudioEngine = new GvrAudioEngine(this, GvrAudioEngine.RenderingMode.BINAURAL_HIGH_QUALITY);
+    Log.d("--", "--");
+    Log.d("--", "--");
+    Log.d("Start MSG", "Starting Project");
+    Log.d("--", "--");
+    Log.d("--", "--");
   }
 
   @Override
   public void onSensorChanged(SensorEvent sensorEvent) {
     Sensor s = sensorEvent.sensor;
 
-    boolean debug = true;
-    if (debug) {
-      if (s.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
-        Log.d("LinAcc Y: ", Float.toString(sensorEvent.values[1]));
-      }
-    } else {
-      if (s.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
-        Log.d("LinAcc", "Linear Acceleration");
-      } else if (s.getType() == Sensor.TYPE_GYROSCOPE) {
-        Log.d("Gyro", "Gyroscope");
+    if (s.getType() == Sensor.TYPE_LINEAR_ACCELERATION) handleLinearAcceleration(sensorEvent);
+
+    timestamp = sensorEvent.timestamp;
+  }
+
+  private void handleLinearAcceleration(SensorEvent event) {
+    if (timestamp != 0) {
+      //Log.d("Acc X:", Float.toString(event.values[1]));
+      //Log.d("Acc XYZ:", Float.toString(event.values[0]) + ",  " + Float.toString(event.values[1]) + ", " + Float.toString(event.values[2]));
+
+      float dTime = (event.timestamp - timestamp) * NS2S;
+      for (int i = 0; i < 3; i++) {
+        velocity[i] += (dTime * event.values[i]);
+        position[i] += (dTime * velocity[i]);
       }
 
-      Log.d("XYZ:", Float.toString(sensorEvent.values[0]) + ",  " + Float.toString(sensorEvent.values[1]) + ", " + Float.toString(sensorEvent.values[2]));
+      Log.d("Pos XYZ", Float.toString(position[0]) + ", " + Float.toString(position[1]) + ", " + Float.toString(position[2]) + "\n\n");
+      Log.d("--", "--");
+      Log.d("--", "--");
     }
   }
 
