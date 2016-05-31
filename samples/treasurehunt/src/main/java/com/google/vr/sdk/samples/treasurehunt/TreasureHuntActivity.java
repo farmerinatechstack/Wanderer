@@ -24,6 +24,9 @@ import com.google.vr.sdk.base.HeadTransform;
 import com.google.vr.sdk.base.Viewport;
 
 import android.content.Context;
+import android.hardware.*;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
 import android.opengl.GLES20;
 import android.opengl.Matrix;
 import android.os.Bundle;
@@ -48,7 +51,7 @@ import javax.microedition.khronos.egl.EGLConfig;
  * While gold, the user can activate the Carboard trigger, which will in turn
  * randomly reposition the cube.
  */
-public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoRenderer {
+public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoRenderer, SensorEventListener {
 
   protected float[] modelCube;
   protected float[] modelPosition;
@@ -125,6 +128,12 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
   private GvrAudioEngine gvrAudioEngine;
   private volatile int soundId = GvrAudioEngine.INVALID_ID;
 
+  // Android Sensors
+  private SensorManager sensorManager;
+  private Sensor accSensor;
+  private Sensor gyroSensor;
+  private WifiManager wifiSensor;
+
   /**
    * Converts a raw text file, saved as a resource, into an OpenGL ES shader.
    *
@@ -192,8 +201,43 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
     headView = new float[16];
     vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 
+    // Initalize Sensors
+    sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
+    accSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
+    gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+
+    sensorManager.registerListener(this, accSensor, SensorManager.SENSOR_DELAY_FASTEST);
+    sensorManager.registerListener(this, gyroSensor, SensorManager.SENSOR_DELAY_FASTEST);
+
+    wifiSensor = (WifiManager) getSystemService(Context.WIFI_SERVICE);
+
     // Initialize 3D audio engine.
     gvrAudioEngine = new GvrAudioEngine(this, GvrAudioEngine.RenderingMode.BINAURAL_HIGH_QUALITY);
+  }
+
+  @Override
+  public void onSensorChanged(SensorEvent sensorEvent) {
+    Sensor s = sensorEvent.sensor;
+
+    boolean debug = true;
+    if (debug) {
+      if (s.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
+        Log.d("LinAcc Y: ", Float.toString(sensorEvent.values[1]));
+      }
+    } else {
+      if (s.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
+        Log.d("LinAcc", "Linear Acceleration");
+      } else if (s.getType() == Sensor.TYPE_GYROSCOPE) {
+        Log.d("Gyro", "Gyroscope");
+      }
+
+      Log.d("XYZ:", Float.toString(sensorEvent.values[0]) + ",  " + Float.toString(sensorEvent.values[1]) + ", " + Float.toString(sensorEvent.values[2]));
+    }
+  }
+
+  @Override
+  public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
   }
 
   public void initializeGvrView() {
