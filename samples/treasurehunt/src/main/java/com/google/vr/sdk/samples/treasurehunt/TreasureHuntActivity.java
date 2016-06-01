@@ -236,36 +236,44 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
   }
 
   private void outputSensorDataToScreen(SensorEvent event) {
+    boolean log = false;
+
     if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
       System.arraycopy(event.values, 0, gravMeasurements, 0, 3);
 
-      TextView xLabel= (TextView)findViewById(R.id.gravX);
-      TextView yLabel= (TextView)findViewById(R.id.gravY);
-      TextView zLabel= (TextView)findViewById(R.id.gravZ);
+      if (log) {
+        TextView xLabel = (TextView) findViewById(R.id.gravX);
+        TextView yLabel = (TextView) findViewById(R.id.gravY);
+        TextView zLabel = (TextView) findViewById(R.id.gravZ);
 
-      xLabel.setText("Gravity X: " + gravMeasurements[0]);
-      yLabel.setText("Gravity Y: " + gravMeasurements[1]);
-      zLabel.setText("Gravity Z: " + gravMeasurements[2]);
+        xLabel.setText("Gravity X: " + gravMeasurements[0]);
+        yLabel.setText("Gravity Y: " + gravMeasurements[1]);
+        zLabel.setText("Gravity Z: " + gravMeasurements[2]);
+      }
     } else if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
       System.arraycopy(event.values, 0, linAccMeasurements, 0, 3);
 
-      TextView xLabel= (TextView)findViewById(R.id.linAccX);
-      TextView yLabel= (TextView)findViewById(R.id.linAccY);
-      TextView zLabel= (TextView)findViewById(R.id.linAccZ);
+      if (log) {
+        TextView xLabel = (TextView) findViewById(R.id.linAccX);
+        TextView yLabel = (TextView) findViewById(R.id.linAccY);
+        TextView zLabel = (TextView) findViewById(R.id.linAccZ);
 
-      xLabel.setText("LinAcc X: " + linAccMeasurements[0]);
-      yLabel.setText("LinAcc Y: " + linAccMeasurements[1]);
-      zLabel.setText("LinAcc Z: " + linAccMeasurements[2]);
+        xLabel.setText("LinAcc X: " + linAccMeasurements[0]);
+        yLabel.setText("LinAcc Y: " + linAccMeasurements[1]);
+        zLabel.setText("LinAcc Z: " + linAccMeasurements[2]);
+      }
     } else if (event.sensor.getType() == Sensor.TYPE_ORIENTATION) {
       System.arraycopy(event.values, 0, orientMeasurements, 0, 3);
 
-      TextView xLabel= (TextView)findViewById(R.id.orientX);
-      TextView yLabel= (TextView)findViewById(R.id.orientY);
-      TextView zLabel= (TextView)findViewById(R.id.orientZ);
+      if (log) {
+        TextView xLabel = (TextView) findViewById(R.id.orientX);
+        TextView yLabel = (TextView) findViewById(R.id.orientY);
+        TextView zLabel = (TextView) findViewById(R.id.orientZ);
 
-      xLabel.setText("Orientation X: " + orientMeasurements[0]);
-      yLabel.setText("Orientation Y: " + orientMeasurements[1]);
-      zLabel.setText("Orientation Z: " + orientMeasurements[2]);
+        xLabel.setText("Orientation X: " + orientMeasurements[0]);
+        yLabel.setText("Orientation Y: " + orientMeasurements[1]);
+        zLabel.setText("Orientation Z: " + orientMeasurements[2]);
+      }
     } else if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
       System.arraycopy(event.values, 0, magMeasurements, 0, 3);
     }
@@ -278,61 +286,24 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
 
     if (sensorEvent.sensor.getType() != Sensor.TYPE_LINEAR_ACCELERATION) return;
 
-    // Rotate Sensors to Earth Space - Needs Testing
-    if (gravMeasurements != null && magMeasurements != null && linAccMeasurements != null) {
-      float[] rotationM = new float[16];
-      if (SensorManager.getRotationMatrix(rotationM, null, gravMeasurements, magMeasurements) != true) return;
+    if (last_values != null) {
+      float dt = (sensorEvent.timestamp - last_timestamp) * NS2S;
+      Log.d("DT", Float.toString(dt));
 
-      float[] toWorldRotation = new float[16];
-      if (SensorManager.remapCoordinateSystem(rotationM, SensorManager.AXIS_MINUS_Y, SensorManager.AXIS_X, toWorldRotation) != true) return;
+      if (Math.abs(linAccMeasurements[2]) < 0.2f) return;
+      velocity[2] += (linAccMeasurements[2] * dt);
+      position[2] += (velocity[2] * dt);
 
-      float[] invertRotationM = new float[16];
-      if (Matrix.invertM(invertRotationM, 0, toWorldRotation, 0) != true) return;
-
-      float[] worldVals = new float[4];
-      //float[] gravVals4D = {gravMeasurements[0], gravMeasurements[1], gravMeasurements[2], 0.0f};
-      float[] vals4D = {linAccMeasurements[0], linAccMeasurements[1], linAccMeasurements[2], 0.0f};
-      Matrix.multiplyMV(worldVals, 0, invertRotationM, 0, vals4D, 0);
-
-      /*
-      linAccMeasurements[0] = worldVals[0];
-      linAccMeasurements[1] = worldVals[1];
-      linAccMeasurements[2] = worldVals[2];
-      */
-
-      linAccMeasurements[0] = 1.0f;
-      linAccMeasurements[1] = 0.0f;
-      linAccMeasurements[2] = 0.0f;
-
-      // Use Linear Acceleration for Velocity and Position
-      if (last_values != null) {
-        float dt = (sensorEvent.timestamp - last_timestamp) * NS2S;
-
-        for(int i = 0; i < 3; ++i){
-          velocity[i] += (linAccMeasurements[i] + last_values[i])/2 * dt;
-          position[i] += velocity[i] * dt;
-        }
-      } else {
-        last_values = new float[3];
-        velocity = new float[3];
-        position = new float[3];
-        velocity[0] = velocity[1] = velocity[2] = 0f;
-        position[0] = position[1] = position[2] = 0f;
-      }
-
-      /*
-      TextView xLabel= (TextView)findViewById(R.id.rotatedCoordX);
-      TextView yLabel= (TextView)findViewById(R.id.rotatedCoordY);
-      TextView zLabel= (TextView)findViewById(R.id.rotatedCoordZ);
-
-      xLabel.setText("Rotated Coord X: " + worldVals[0]);
-      yLabel.setText("Rotated Coord Y: " + worldVals[1]);
-      zLabel.setText("Rotated Coord Z: " + worldVals[2]);
-      */
-
-      System.arraycopy(linAccMeasurements, 0, last_values, 0, 3);
-      last_timestamp = sensorEvent.timestamp;
+    } else {
+      last_values = new float[3];
+      velocity = new float[3];
+      position = new float[3];
+      velocity[0] = velocity[1] = velocity[2] = 0f;
+      position[0] = position[1] = position[2] = 0f;
     }
+
+    System.arraycopy(linAccMeasurements, 0, last_values, 0, 3);
+    last_timestamp = sensorEvent.timestamp;
   }
 
   /**
