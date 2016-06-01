@@ -32,6 +32,7 @@ import android.opengl.Matrix;
 import android.os.Bundle;
 import android.os.Vibrator;
 import android.util.Log;
+import android.widget.TextView;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -130,15 +131,24 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
 
   // Android Tracking Data & Sensors
   private static final float NS2S = 1.0f / 1000000000.0f;
-
-  private float[] velocity;
-  private float[] position;
-  private float timestamp;
+  float[] last_values = null;
+  float[] velocity = null;
+  float[] position = null;
+  long last_timestamp = 0;
 
   private SensorManager sensorManager;
   private Sensor accSensor;
-  private Sensor gyroSensor;
+  private Sensor gravSensor;
+  private Sensor magSensor;
+  private Sensor orientSensor;
   private WifiManager wifiSensor;
+
+  float[] linAccMeasurements = new float[3];
+  float[] gravMeasurements = new float[3];
+  float[] magMeasurements = new float[3];
+  float[] orientMeasurements = new float[3];
+
+  private float incrementer = 0.5f;
 
   /**
    * Converts a raw text file, saved as a resource, into an OpenGL ES shader.
@@ -207,52 +217,147 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
     headView = new float[16];
     vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 
-    // Initalize Tracking Data and Sensors
-    velocity = new float[3];
-    position = new float[3];
-
+    // Initalize Sensors
     sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
     accSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION);
-    gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
+    gravSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+    magSensor = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+    orientSensor = sensorManager.getDefaultSensor(Sensor.TYPE_ORIENTATION);
 
-    sensorManager.registerListener(this, accSensor, SensorManager.SENSOR_DELAY_FASTEST);
-    sensorManager.registerListener(this, gyroSensor, SensorManager.SENSOR_DELAY_FASTEST);
+    sensorManager.registerListener(this, accSensor, SensorManager.SENSOR_DELAY_NORMAL);
+    sensorManager.registerListener(this, gravSensor, SensorManager.SENSOR_DELAY_NORMAL);
+    sensorManager.registerListener(this, magSensor, SensorManager.SENSOR_DELAY_NORMAL);
+    sensorManager.registerListener(this, orientSensor, SensorManager.SENSOR_DELAY_NORMAL);
 
     wifiSensor = (WifiManager) getSystemService(Context.WIFI_SERVICE);
 
     // Initialize 3D audio engine.
     gvrAudioEngine = new GvrAudioEngine(this, GvrAudioEngine.RenderingMode.BINAURAL_HIGH_QUALITY);
-    Log.d("--", "--");
-    Log.d("--", "--");
-    Log.d("Start MSG", "Starting Project");
-    Log.d("--", "--");
-    Log.d("--", "--");
+  }
+
+  private void outputSensorDataToScreen(SensorEvent event) {
+    if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+      System.arraycopy(event.values, 0, gravMeasurements, 0, 3);
+
+      TextView xLabel= (TextView)findViewById(R.id.gravX);
+      TextView yLabel= (TextView)findViewById(R.id.gravY);
+      TextView zLabel= (TextView)findViewById(R.id.gravZ);
+
+      xLabel.setText("Gravity X: " + gravMeasurements[0]);
+      yLabel.setText("Gravity Y: " + gravMeasurements[1]);
+      zLabel.setText("Gravity Z: " + gravMeasurements[2]);
+    } else if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
+      System.arraycopy(event.values, 0, linAccMeasurements, 0, 3);
+
+      TextView xLabel= (TextView)findViewById(R.id.linAccX);
+      TextView yLabel= (TextView)findViewById(R.id.linAccY);
+      TextView zLabel= (TextView)findViewById(R.id.linAccZ);
+
+      xLabel.setText("LinAcc X: " + linAccMeasurements[0]);
+      yLabel.setText("LinAcc Y: " + linAccMeasurements[1]);
+      zLabel.setText("LinAcc Z: " + linAccMeasurements[2]);
+    } else if (event.sensor.getType() == Sensor.TYPE_ORIENTATION) {
+      System.arraycopy(event.values, 0, orientMeasurements, 0, 3);
+
+      TextView xLabel= (TextView)findViewById(R.id.orientX);
+      TextView yLabel= (TextView)findViewById(R.id.orientY);
+      TextView zLabel= (TextView)findViewById(R.id.orientZ);
+
+      xLabel.setText("Orientation X: " + orientMeasurements[0]);
+      yLabel.setText("Orientation Y: " + orientMeasurements[1]);
+      zLabel.setText("Orientation Z: " + orientMeasurements[2]);
+    } else if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+      System.arraycopy(event.values, 0, magMeasurements, 0, 3);
+    }
   }
 
   @Override
   public void onSensorChanged(SensorEvent sensorEvent) {
-    Sensor s = sensorEvent.sensor;
 
-    if (s.getType() == Sensor.TYPE_LINEAR_ACCELERATION) handleLinearAcceleration(sensorEvent);
+    // Output Sensor Data to Screen
+    outputSensorDataToScreen(sensorEvent);
 
-    timestamp = sensorEvent.timestamp;
-  }
-
-  private void handleLinearAcceleration(SensorEvent event) {
-    if (timestamp != 0) {
-      //Log.d("Acc X:", Float.toString(event.values[1]));
-      //Log.d("Acc XYZ:", Float.toString(event.values[0]) + ",  " + Float.toString(event.values[1]) + ", " + Float.toString(event.values[2]));
-
-      float dTime = (event.timestamp - timestamp) * NS2S;
-      for (int i = 0; i < 3; i++) {
-        velocity[i] += (dTime * event.values[i]);
-        position[i] += (dTime * velocity[i]);
+    /* Rotate Sensors to Earth Space - Needs Testing
+    if (gravMeasurements != null && magMeasurements != null && linAccMeasurements != null) {
+      float[] rotationM = new float[16];
+      if (SensorManager.getRotationMatrix(rotationM, null, mGrav, mGeoMag) != true) {
+        Log.d("Error", "Failed rotation computation");
+        return;
       }
 
-      Log.d("Pos XYZ", Float.toString(position[0]) + ", " + Float.toString(position[1]) + ", " + Float.toString(position[2]) + "\n\n");
-      Log.d("--", "--");
-      Log.d("--", "--");
+      float[] invertRotationM = new float[16];
+      if (Matrix.invertM(invertRotationM, 0, rotationM, 0) != true) {
+        Log.d("Error", "Failed invert matrix computation");
+        return;
+      }
+
+      float[] worldAcc = new float[4];
+      float[] linAccVals4D = {linAccMeasurements[0], linAccMeasurements[1], linAccMeasurements[2], 0.0f};
+      Matrix.multiplyMV(worldAcc, 0, invertRotationM, 0, linAccVals4D, 0);
+
+      Log.d("Acc XYZ", Float.toString(worldAcc[0]) + ", " + Float.toString(worldAcc[1]) + ", " + Float.toString(worldAcc[2]));
     }
+    */
+
+    // Use Linear Acceleration for Velocity and Position
+    if (last_values != null) {
+      float dt = (sensorEvent.timestamp - last_timestamp) * NS2S;
+
+      for(int i = 0; i < 3; ++i){
+        if (Math.abs(sensorEvent.values[i]) < 1.0f) continue;
+        velocity[i] += (sensorEvent.values[i] + last_values[i])/2 * dt;
+        position[i] += velocity[i] * dt;
+      }
+    } else {
+      last_values = new float[3];
+      velocity = new float[3];
+      position = new float[3];
+      velocity[0] = velocity[1] = velocity[2] = 0f;
+      position[0] = position[1] = position[2] = 0f;
+    }
+
+    System.arraycopy(sensorEvent.values, 0, last_values, 0, 3);
+    last_timestamp = sensorEvent.timestamp;
+  }
+
+  /**
+   * Prepares OpenGL ES before we draw a frame.
+   *
+   * @param headTransform The head transformation in the new frame.
+   */
+  @Override
+  public void onNewFrame(HeadTransform headTransform) {
+    setCubeRotation();
+
+    // Build the camera matrix and apply it to the ModelView.
+
+    /* Used for production
+    Matrix.setLookAtM(camera, 0,
+            position[0], 0, CAMERA_Z + position[2],
+            position[0], 0, position[2],
+            0.0f, 1.0f, 0.0f);
+            // eye, center, up
+    */
+
+    // Used to check the virtual world coordinate system.
+    incrementer += 0.02f;
+    Matrix.setLookAtM(camera, 0,
+            incrementer, 0.0f, CAMERA_Z,
+            incrementer, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f);
+    // eye, center, up
+
+
+    headTransform.getHeadView(headView, 0);
+    // Update the 3d audio engine with the most recent head rotation.
+    headTransform.getQuaternion(headRotation, 0);
+
+    gvrAudioEngine.setHeadRotation(
+            headRotation[0], headRotation[1], headRotation[2], headRotation[3]);
+    // Regular update call to GVR audio engine.
+    gvrAudioEngine.update();
+
+    checkGLError("onReadyToDraw");
   }
 
   @Override
@@ -281,6 +386,7 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
   @Override
   public void onPause() {
     gvrAudioEngine.pause();
+    sensorManager.unregisterListener(this);
     super.onPause();
   }
 
@@ -460,30 +566,6 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
       e.printStackTrace();
     }
     return null;
-  }
-
-  /**
-   * Prepares OpenGL ES before we draw a frame.
-   *
-   * @param headTransform The head transformation in the new frame.
-   */
-  @Override
-  public void onNewFrame(HeadTransform headTransform) {
-    setCubeRotation();
-
-    // Build the camera matrix and apply it to the ModelView.
-    Matrix.setLookAtM(camera, 0, 0.0f, 0.0f, CAMERA_Z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
-
-    headTransform.getHeadView(headView, 0);
-
-    // Update the 3d audio engine with the most recent head rotation.
-    headTransform.getQuaternion(headRotation, 0);
-    gvrAudioEngine.setHeadRotation(
-        headRotation[0], headRotation[1], headRotation[2], headRotation[3]);
-    // Regular update call to GVR audio engine.
-    gvrAudioEngine.update();
-
-    checkGLError("onReadyToDraw");
   }
 
   protected void setCubeRotation() {

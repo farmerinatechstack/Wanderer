@@ -13,4 +13,74 @@
         android:layout_alignParentTop="true"
         android:layout_alignParentLeft="true" />
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="gravX"
+        android:id="@+id/gravX" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="gravY"
+        android:id="@+id/gravY"
+        android:layout_below="@+id/gravX" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="gravZ"
+        android:id="@+id/gravZ"
+        android:layout_below="@+id/gravY" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="linAccX"
+        android:id="@+id/linAccX"
+        android:layout_below="@+id/gravZ" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="linAccY"
+        android:id="@+id/linAccY"
+        android:layout_below="@+id/linAccX" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="linAccZ"
+        android:id="@+id/linAccZ"
+        android:layout_below="@+id/linAccY" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="orientX"
+        android:id="@+id/orientX"
+        android:layout_below="@+id/linAccZ" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="orientY"
+        android:id="@+id/orientY"
+        android:layout_below="@+id/orientX" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="orientZ"
+        android:id="@+id/orientZ"
+        android:layout_below="@+id/orientY" />
 </RelativeLayout>
