@@ -134,7 +134,7 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
   float[] last_values = null;
   float[] velocity = null;
   float[] position = null;
-  float[] acceleration = new float[3];
+  float[] acceleration = null;
   long last_timestamp = 0;
 
   private SensorManager sensorManager;
@@ -262,7 +262,7 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
 
       if (position != null) {
         xPosLabel.setText("posX: 0");
-        yPosLabel.setText("posY: 0");
+        yPosLabel.setText("posY: " + position[0]);
         zPosLabel.setText("posZ: " + position[2]);
       }
     } else if (event.sensor.getType() == Sensor.TYPE_ORIENTATION) {
@@ -286,19 +286,7 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
         velocity[i] += (sensorEvent.values[i] + last_values[i]) / 2.0 * dt;
         position[i] += velocity[i] * dt;
       }
-
-
-        if (Math.abs(sensorEvent.values[1]) > 0.5f) {
-          velocity[0] -= (sensorEvent.values[1] + last_values[1]) / 2.0 * dt;
-          position[0] += (velocity[0] * dt) * 2f;
-        }
-
-        if (Math.abs(sensorEvent.values[0]) > 0.5f) {
-          velocity[1] += (sensorEvent.values[0] + last_values[0]) / 2.0 * dt;
-          position[1] += (velocity[1] * dt) * 2f;
-        }
       */
-
         if (Math.abs(sensorEvent.values[2]) > 0.5f) {
           acceleration[2] += sensorEvent.values[2];
           velocity[2] += (acceleration[2] * dt);
@@ -308,9 +296,10 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
         last_values = new float[3];
         velocity = new float[3];
         position = new float[3];
-        acceleration[0] = acceleration[1] = acceleration[2] = 0f;
+        acceleration = new float[3];
         velocity[0] = velocity[1] = velocity[2] = 0f;
         position[0] = position[1] = position[2] = 0f;
+        acceleration[0] = acceleration[1] = acceleration[2] = 0f;
       }
 
       System.arraycopy(sensorEvent.values, 0, last_values, 0, 3);
@@ -329,8 +318,8 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
 
     // Build the camera matrix and apply it to the ModelView.
     Matrix.setLookAtM(camera, 0,
-            0f, 0f, CAMERA_Z + position[2],
-            0f, 0f, position[2],
+            position[0], 0f, CAMERA_Z,
+            position[0], 0f, 0f,
             0.0f, 1.0f, 0.0f); // position[1]
             // eye, center, up
 
