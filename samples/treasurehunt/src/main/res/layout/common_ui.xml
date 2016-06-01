@@ -83,4 +83,25 @@
         android:text="orientZ"
         android:id="@+id/orientZ"
         android:layout_below="@+id/orientY" />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="posX"
+        android:id="@+id/posX"
+        android:layout_below="@+id/orientZ" />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="posY"
+        android:id="@+id/posY"
+        android:layout_below="@+id/posX" />
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="posZ"
+        android:id="@+id/posZ"
+        android:layout_below="@+id/posY" />
 </RelativeLayout>
