@@ -134,6 +134,7 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
   float[] last_values = null;
   float[] velocity = null;
   float[] position = null;
+  float[] acceleration = new float[3];
   long last_timestamp = 0;
 
   private SensorManager sensorManager;
@@ -147,6 +148,7 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
   float[] gravMeasurements = new float[3];
   float[] magMeasurements = new float[3];
   float[] orientMeasurements = new float[3];
+  float[] headRotArray = new float[3];
 
   private float incrementer = 0.5f;
 
@@ -239,17 +241,7 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
     boolean log = false;
 
     if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-      System.arraycopy(event.values, 0, gravMeasurements, 0, 3);
 
-      if (log) {
-        TextView xLabel = (TextView) findViewById(R.id.gravX);
-        TextView yLabel = (TextView) findViewById(R.id.gravY);
-        TextView zLabel = (TextView) findViewById(R.id.gravZ);
-
-        xLabel.setText("Gravity X: " + gravMeasurements[0]);
-        yLabel.setText("Gravity Y: " + gravMeasurements[1]);
-        zLabel.setText("Gravity Z: " + gravMeasurements[2]);
-      }
     } else if (event.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
       System.arraycopy(event.values, 0, linAccMeasurements, 0, 3);
 
@@ -262,18 +254,19 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
         yLabel.setText("LinAcc Y: " + linAccMeasurements[1]);
         zLabel.setText("LinAcc Z: " + linAccMeasurements[2]);
       }
+
+
+      TextView xPosLabel= (TextView)findViewById(R.id.posX);
+      TextView yPosLabel= (TextView)findViewById(R.id.posY);
+      TextView zPosLabel= (TextView)findViewById(R.id.posZ);
+
+      if (position != null) {
+        xPosLabel.setText("posX: 0");
+        yPosLabel.setText("posY: 0");
+        zPosLabel.setText("posZ: " + position[2]);
+      }
     } else if (event.sensor.getType() == Sensor.TYPE_ORIENTATION) {
       System.arraycopy(event.values, 0, orientMeasurements, 0, 3);
-
-      if (log) {
-        TextView xLabel = (TextView) findViewById(R.id.orientX);
-        TextView yLabel = (TextView) findViewById(R.id.orientY);
-        TextView zLabel = (TextView) findViewById(R.id.orientZ);
-
-        xLabel.setText("Orientation X: " + orientMeasurements[0]);
-        yLabel.setText("Orientation Y: " + orientMeasurements[1]);
-        zLabel.setText("Orientation Z: " + orientMeasurements[2]);
-      }
     } else if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
       System.arraycopy(event.values, 0, magMeasurements, 0, 3);
     }
@@ -284,26 +277,45 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
     // Output Sensor Data to Screen
     outputSensorDataToScreen(sensorEvent);
 
-    if (sensorEvent.sensor.getType() != Sensor.TYPE_LINEAR_ACCELERATION) return;
+    if (sensorEvent.sensor.getType() == Sensor.TYPE_LINEAR_ACCELERATION) {
+      // Use Linear Acceleration for Velocity and Position
+      if (last_values != null) {
+        float dt = (sensorEvent.timestamp - last_timestamp) * NS2S;
+      /* aashna
+      for(int i = 0; i < 3; ++i){
+        velocity[i] += (sensorEvent.values[i] + last_values[i]) / 2.0 * dt;
+        position[i] += velocity[i] * dt;
+      }
 
-    if (last_values != null) {
-      float dt = (sensorEvent.timestamp - last_timestamp) * NS2S;
-      Log.d("DT", Float.toString(dt));
 
-      if (Math.abs(linAccMeasurements[2]) < 0.2f) return;
-      velocity[2] += (linAccMeasurements[2] * dt);
-      position[2] += (velocity[2] * dt);
+        if (Math.abs(sensorEvent.values[1]) > 0.5f) {
+          velocity[0] -= (sensorEvent.values[1] + last_values[1]) / 2.0 * dt;
+          position[0] += (velocity[0] * dt) * 2f;
+        }
 
-    } else {
-      last_values = new float[3];
-      velocity = new float[3];
-      position = new float[3];
-      velocity[0] = velocity[1] = velocity[2] = 0f;
-      position[0] = position[1] = position[2] = 0f;
+        if (Math.abs(sensorEvent.values[0]) > 0.5f) {
+          velocity[1] += (sensorEvent.values[0] + last_values[0]) / 2.0 * dt;
+          position[1] += (velocity[1] * dt) * 2f;
+        }
+      */
+
+        if (Math.abs(sensorEvent.values[2]) > 0.5f) {
+          acceleration[2] += sensorEvent.values[2];
+          velocity[2] += (acceleration[2] * dt);
+          position[2] += (velocity[2] * dt + (acceleration[2] / 2.0f * dt * dt));
+        }
+      } else {
+        last_values = new float[3];
+        velocity = new float[3];
+        position = new float[3];
+        acceleration[0] = acceleration[1] = acceleration[2] = 0f;
+        velocity[0] = velocity[1] = velocity[2] = 0f;
+        position[0] = position[1] = position[2] = 0f;
+      }
+
+      System.arraycopy(sensorEvent.values, 0, last_values, 0, 3);
+      last_timestamp = sensorEvent.timestamp;
     }
-
-    System.arraycopy(linAccMeasurements, 0, last_values, 0, 3);
-    last_timestamp = sensorEvent.timestamp;
   }
 
   /**
@@ -316,26 +328,16 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
     setCubeRotation();
 
     // Build the camera matrix and apply it to the ModelView.
-
     Matrix.setLookAtM(camera, 0,
-            position[0], 0, CAMERA_Z + position[2],
-            position[0], 0, position[2],
-            0.0f, 1.0f, 0.0f);
+            0f, 0f, CAMERA_Z + position[2],
+            0f, 0f, position[2],
+            0.0f, 1.0f, 0.0f); // position[1]
             // eye, center, up
-
-    /*
-    // Used to check the virtual world coordinate system.
-    incrementer += 0.02f;
-    Matrix.setLookAtM(camera, 0,
-            incrementer, 0.0f, CAMERA_Z,
-            incrementer, 0.0f, 0.0f,
-            0.0f, 1.0f, 0.0f);
-    // eye, center, up
-    */
 
     headTransform.getHeadView(headView, 0);
     // Update the 3d audio engine with the most recent head rotation.
     headTransform.getQuaternion(headRotation, 0);
+    //headTransform.getEulerAngles(headRotArray, 0); //aashna
 
     gvrAudioEngine.setHeadRotation(
             headRotation[0], headRotation[1], headRotation[2], headRotation[3]);
