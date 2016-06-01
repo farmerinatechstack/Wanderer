@@ -273,51 +273,66 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
 
   @Override
   public void onSensorChanged(SensorEvent sensorEvent) {
-
     // Output Sensor Data to Screen
     outputSensorDataToScreen(sensorEvent);
 
-    /* Rotate Sensors to Earth Space - Needs Testing
+    if (sensorEvent.sensor.getType() != Sensor.TYPE_LINEAR_ACCELERATION) return;
+
+    // Rotate Sensors to Earth Space - Needs Testing
     if (gravMeasurements != null && magMeasurements != null && linAccMeasurements != null) {
       float[] rotationM = new float[16];
-      if (SensorManager.getRotationMatrix(rotationM, null, mGrav, mGeoMag) != true) {
-        Log.d("Error", "Failed rotation computation");
-        return;
-      }
+      if (SensorManager.getRotationMatrix(rotationM, null, gravMeasurements, magMeasurements) != true) return;
+
+      float[] toWorldRotation = new float[16];
+      if (SensorManager.remapCoordinateSystem(rotationM, SensorManager.AXIS_MINUS_Y, SensorManager.AXIS_X, toWorldRotation) != true) return;
 
       float[] invertRotationM = new float[16];
-      if (Matrix.invertM(invertRotationM, 0, rotationM, 0) != true) {
-        Log.d("Error", "Failed invert matrix computation");
-        return;
+      if (Matrix.invertM(invertRotationM, 0, toWorldRotation, 0) != true) return;
+
+      float[] worldVals = new float[4];
+      //float[] gravVals4D = {gravMeasurements[0], gravMeasurements[1], gravMeasurements[2], 0.0f};
+      float[] vals4D = {linAccMeasurements[0], linAccMeasurements[1], linAccMeasurements[2], 0.0f};
+      Matrix.multiplyMV(worldVals, 0, invertRotationM, 0, vals4D, 0);
+
+      /*
+      linAccMeasurements[0] = worldVals[0];
+      linAccMeasurements[1] = worldVals[1];
+      linAccMeasurements[2] = worldVals[2];
+      */
+
+      linAccMeasurements[0] = 1.0f;
+      linAccMeasurements[1] = 0.0f;
+      linAccMeasurements[2] = 0.0f;
+
+      // Use Linear Acceleration for Velocity and Position
+      if (last_values != null) {
+        float dt = (sensorEvent.timestamp - last_timestamp) * NS2S;
+
+        for(int i = 0; i < 3; ++i){
+          velocity[i] += (linAccMeasurements[i] + last_values[i])/2 * dt;
+          position[i] += velocity[i] * dt;
+        }
+      } else {
+        last_values = new float[3];
+        velocity = new float[3];
+        position = new float[3];
+        velocity[0] = velocity[1] = velocity[2] = 0f;
+        position[0] = position[1] = position[2] = 0f;
       }
 
-      float[] worldAcc = new float[4];
-      float[] linAccVals4D = {linAccMeasurements[0], linAccMeasurements[1], linAccMeasurements[2], 0.0f};
-      Matrix.multiplyMV(worldAcc, 0, invertRotationM, 0, linAccVals4D, 0);
+      /*
+      TextView xLabel= (TextView)findViewById(R.id.rotatedCoordX);
+      TextView yLabel= (TextView)findViewById(R.id.rotatedCoordY);
+      TextView zLabel= (TextView)findViewById(R.id.rotatedCoordZ);
 
-      Log.d("Acc XYZ", Float.toString(worldAcc[0]) + ", " + Float.toString(worldAcc[1]) + ", " + Float.toString(worldAcc[2]));
+      xLabel.setText("Rotated Coord X: " + worldVals[0]);
+      yLabel.setText("Rotated Coord Y: " + worldVals[1]);
+      zLabel.setText("Rotated Coord Z: " + worldVals[2]);
+      */
+
+      System.arraycopy(linAccMeasurements, 0, last_values, 0, 3);
+      last_timestamp = sensorEvent.timestamp;
     }
-    */
-
-    // Use Linear Acceleration for Velocity and Position
-    if (last_values != null) {
-      float dt = (sensorEvent.timestamp - last_timestamp) * NS2S;
-
-      for(int i = 0; i < 3; ++i){
-        if (Math.abs(sensorEvent.values[i]) < 1.0f) continue;
-        velocity[i] += (sensorEvent.values[i] + last_values[i])/2 * dt;
-        position[i] += velocity[i] * dt;
-      }
-    } else {
-      last_values = new float[3];
-      velocity = new float[3];
-      position = new float[3];
-      velocity[0] = velocity[1] = velocity[2] = 0f;
-      position[0] = position[1] = position[2] = 0f;
-    }
-
-    System.arraycopy(sensorEvent.values, 0, last_values, 0, 3);
-    last_timestamp = sensorEvent.timestamp;
   }
 
   /**
@@ -331,14 +346,13 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
 
     // Build the camera matrix and apply it to the ModelView.
 
-    /* Used for production
     Matrix.setLookAtM(camera, 0,
             position[0], 0, CAMERA_Z + position[2],
             position[0], 0, position[2],
             0.0f, 1.0f, 0.0f);
             // eye, center, up
-    */
 
+    /*
     // Used to check the virtual world coordinate system.
     incrementer += 0.02f;
     Matrix.setLookAtM(camera, 0,
@@ -346,7 +360,7 @@ public class TreasureHuntActivity extends GvrActivity implements GvrView.StereoR
             incrementer, 0.0f, 0.0f,
             0.0f, 1.0f, 0.0f);
     // eye, center, up
-
+    */
 
     headTransform.getHeadView(headView, 0);
     // Update the 3d audio engine with the most recent head rotation.

@@ -83,4 +83,28 @@
         android:text="orientZ"
         android:id="@+id/orientZ"
         android:layout_below="@+id/orientY" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="rotatedCoordX"
+        android:id="@+id/rotatedCoordX"
+        android:layout_below="@+id/orientZ" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="rotatedCoordY"
+        android:id="@+id/rotatedCoordY"
+        android:layout_below="@+id/rotatedCoordX" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:text="rotatedCoordZ"
+        android:id="@+id/rotatedCoordZ"
+        android:layout_below="@+id/rotatedCoordY" />
 </RelativeLayout>
